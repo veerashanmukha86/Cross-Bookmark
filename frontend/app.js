@@ -1,18 +1,28 @@
+// Adding the Supabase implementation
+const SUPABASE_URL = 'https://xodvvcdsflfpqszmmupj.supabase.co'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvZHZ2Y2RzZmxmcHFzem1tdXBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc4MDU3MzQsImV4cCI6MjA2MzM4MTczNH0.XfhMxP652Br1dXhcsEa7es8NvuK2h_NCFGyDK7_kRqY';       
+
+const supabase = window.supabase
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 function toggleTheme() {
   document.body.classList.toggle('light');
 }
 function showSection(section) {
-  const main = document.getElementById('main-content');
-  if (section === 'account') {
+  const main = document.getElementById('main-content'); if (section === 'account') {
     main.innerHTML = `<h2>Account Details</h2><p>Show user info here.</p>`;
   } else if (section === 'links') {
     main.innerHTML = `
-      <h2>My Links</h2>
+      <div class="user-controls">
+        <h2>My Links</h2>
+        <button onclick="logout()" class="logout-btn">Logout</button>
+      </div>
       <textarea id="links" placeholder="Paste your links here, one per line"></textarea><br>
       <button onclick="fetchMetadata()">Get Metadata</button>
       <div id="results"></div>
       <div id="folders" style="margin-top:32px;"></div>
-      <div class="popup-btn" id="popupBtn" title="Create Folder" onclick="togglePopup()">
+      <div class="popup-btn" id="popupBtn" title="Create Folder" onclick="togglePopup()"> 
         +
       </div>
       <div class="popup-icons" id="popupIcons">
@@ -39,13 +49,93 @@ function showSection(section) {
     main.innerHTML = `<h2>Settings</h2><p>Theme, notifications, etc.</p>`;
   } else if (section === 'login') {
     main.innerHTML = `<h2>Login / Signup</h2>
+      <div class="auth-tabs">
+        <button id="login-tab" class="active">Login</button>
+        <button id="signup-tab">Signup</button>
+      </div>
       <form id="login-form">
-        <input type="text" placeholder="Username" required /><br/>
-        <input type="password" placeholder="Password" required /><br/>
+        <input type="email" id="login-email" placeholder="Email" required /><br/>
+        <input type="password" id="login-password" placeholder="Password" required /><br/>
         <button type="submit">Login</button>
+        <div id="login-message"></div>
+      </form>
+      <form id="signup-form" style="display:none;">
+        <input type="email" id="signup-email" placeholder="Email" required /><br/>
+        <input type="password" id="signup-password" placeholder="Password" required /><br/>
+        <input type="password" id="signup-confirm-password" placeholder="Confirm Password" required /><br/>
+        <button type="submit">Sign Up</button>
+        <div id="signup-message"></div>
       </form>`;
+
+    // Add tab switching functionality
+    document.getElementById('login-tab').addEventListener('click', function () {
+      document.getElementById('login-form').style.display = 'block';
+      document.getElementById('signup-form').style.display = 'none';
+      this.classList.add('active');
+      document.getElementById('signup-tab').classList.remove('active');
+    });
+
+    document.getElementById('signup-tab').addEventListener('click', function () {
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('signup-form').style.display = 'block';
+      this.classList.add('active');
+      document.getElementById('login-tab').classList.remove('active');
+    }); document.getElementById('login-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const msg = document.getElementById('login-message');
+      if (error) {
+        msg.textContent = error.message;
+        msg.style.color = "red";
+      } else {
+        msg.textContent = "Login successful!";
+        msg.style.color = "green";
+        // Store user session data
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          localStorage.setItem('userId', user.id);
+          // Redirect to links section after successful login
+          setTimeout(() => showSection('links'), 1000);
+        }
+      }
+    });
+
+    document.getElementById('signup-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      const confirmPassword = document.getElementById('signup-confirm-password').value;
+      const msg = document.getElementById('signup-message');
+
+      if (password !== confirmPassword) {
+        msg.textContent = "Passwords do not match";
+        msg.style.color = "red";
+        return;
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
+      });
+
+      if (error) {
+        msg.textContent = error.message;
+        msg.style.color = "red";
+      } else {
+        msg.textContent = "Registration successful! Please check your email to confirm your account.";
+        msg.style.color = "green";
+      }
+    });
   }
+
 }
+
+
 
 async function fetchMetadata() {
   const links = document.getElementById('links').value
@@ -68,17 +158,17 @@ async function fetchMetadata() {
       document.getElementById('results').innerHTML = '<p>No metadata found for the provided links.</p>';
       return;
     }
-function dropCard(event, folderContent) {
-  event.preventDefault();
-  const url = event.dataTransfer.getData('text/plain');
-  const card = document.querySelector(`.card[data-url="${url}"]`);
-  if (card && !folderContent.contains(card)) {
-    if (folderContent.textContent.includes("Drop preview cards here...")) {
-      folderContent.textContent = "";
+    function dropCard(event, folderContent) {
+      event.preventDefault();
+      const url = event.dataTransfer.getData('text/plain');
+      const card = document.querySelector(`.card[data-url="${url}"]`);
+      if (card && !folderContent.contains(card)) {
+        if (folderContent.textContent.includes("Drop preview cards here...")) {
+          folderContent.textContent = "";
+        }
+        folderContent.appendChild(card);
+      }
     }
-    folderContent.appendChild(card);
-  }
-}
     document.getElementById('results').innerHTML = data.map(item => `
       <div class="card" draggable="true" data-url="${item.url}">
         ${item.thumbnail ? `<img class="thumb" src="${item.thumbnail}" alt="thumbnail">` : `<div class="thumb">No Image</div>`}
@@ -113,7 +203,7 @@ function createFolder(name, icon, cards = []) {
     </div>
     <div class="folder-content" ondragover="event.preventDefault()" ondrop="dropCard(event, this, '${name}')">Drop preview cards here...</div>
   `;
-  folder.querySelector('.folder-header').addEventListener('click', function(e) {
+  folder.querySelector('.folder-header').addEventListener('click', function (e) {
     if (e.target.classList.contains('folder-btn')) return;
     openFolderPage(name, icon);
   });
@@ -253,7 +343,7 @@ function openFolderPage(name, icon) {
     }
   }
 
-  window.fetchFolderMetadata = async function(folderName) {
+  window.fetchFolderMetadata = async function (folderName) {
     const links = document.getElementById('folder-links').value
       .split('\n')
       .map(l => l.trim())
@@ -289,9 +379,42 @@ function openFolderPage(name, icon) {
   };
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+// Logout function
+async function logout() {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error('Error logging out:', error.message);
+  } else {
+    localStorage.removeItem('userId');
+    showSection('login');
+  }
+}
+
+// Check if user is logged in
+async function checkUserSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      localStorage.setItem('userId', user.id);
+      return true;
+    }
+  }
+  return false;
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
   if (window.innerWidth < 800) {
     document.querySelector('.sidebar').classList.add('closed');
   }
+
+  // Check if user is logged in and show appropriate section
+  const isLoggedIn = await checkUserSession();
+  if (isLoggedIn) {
+    showSection('links');
+  } else {
+    showSection('login');
+  }
+
   loadFoldersFromStorage();
 });

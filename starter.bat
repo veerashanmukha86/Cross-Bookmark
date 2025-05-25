@@ -7,7 +7,7 @@ start cmd /k "cd /d %~dp0 && python -m uvicorn backend.app:app --reload"
 
 echo.
 echo Starting Frontend...
-start "" "%~dp0index.html"
+start "" "F:\projecys\Cross-Bookmark\frontend\index.html"
 
 echo.
 echo Cross-Bookmark has been started:
