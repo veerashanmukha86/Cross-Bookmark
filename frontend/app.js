@@ -415,6 +415,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   } else {
     showSection('login');
   }
-
+ 
   loadFoldersFromStorage();
 }); 
