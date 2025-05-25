@@ -417,4 +417,4 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   loadFoldersFromStorage();
-});
+}); 
