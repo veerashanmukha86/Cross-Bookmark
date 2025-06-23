@@ -1,18 +1,16 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, AnyUrl as HttpUrl
 from bs4 import BeautifulSoup
 import requests
 import uvicorn
 import logging
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Link Metadata API")
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,7 +36,7 @@ def fetch_metadata(url: str) -> Metadata:
     try:
         logger.info(f"Fetching metadata for: {url}")
         
-        # Use microlink.io API for Twitter/X
+         
         if "twitter.com" in url or "x.com" in url:
             logger.info("Using microlink.io API for Twitter/X")
             api_url = f"https://api.microlink.io/?url={url}"
@@ -61,7 +59,7 @@ def fetch_metadata(url: str) -> Metadata:
             else:
                 logger.warning(f"Microlink API failed for {url}: {data.get('message')}")
         
-        # For all other sites, use direct BeautifulSoup extraction
+        
         logger.info("Using BeautifulSoup for metadata extraction")
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -70,18 +68,18 @@ def fetch_metadata(url: str) -> Metadata:
         resp = requests.get(url, headers=headers, timeout=5)
         soup = BeautifulSoup(resp.text, "html.parser")
         
-        # Initialize metadata
+       
         metadata = Metadata(url=url)
         
-        # Get title
+         
         metadata.title = soup.title.string if soup.title else None
         
-        # Get description
+        
         desc_tag = soup.find("meta", attrs={"name": "description"})
         if desc_tag and desc_tag.get("content"):
             metadata.description = desc_tag["content"]
         
-        # Try OpenGraph tags for title, description and image
+         
         og_title = soup.find("meta", property="og:title")
         if og_title and og_title.get("content"):
             metadata.title = og_title["content"]
