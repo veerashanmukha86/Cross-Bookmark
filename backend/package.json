@@ -1,0 +1,12 @@
+{
+  "name": "cross-bookmark-backend",
+  "version": "1.0.0",
+  "description": "Backend for Cross Bookmark application",
+  "engines": {
+    "node": "14.x"
+  },
+  "scripts": {
+    "start": "uvicorn app:app --host=0.0.0.0 --port=$PORT",
+    "build": "pip install -r requirements.txt"
+  }
+}
